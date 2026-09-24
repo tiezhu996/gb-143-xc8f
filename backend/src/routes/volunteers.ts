@@ -11,6 +11,7 @@ import {
   getVolunteerSummary,
 } from '../services/volunteerManager';
 import { getVolunteerBadges } from '../services/badgeService';
+import { getVolunteerQualifications } from '../services/qualificationService';
 import { messages } from '../constants/messages';
 import { sendBadRequest, sendInternalError } from '../utils/httpResponses';
 
@@ -64,6 +65,26 @@ router.get('/:id/badges', async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: badges });
   } catch (error) {
     sendInternalError(res, error, 'Error getting volunteer badges');
+  }
+});
+
+// 资格详情：当前有效资格（含有效期）与历史留档
+router.get('/:id/qualifications', async (req: Request, res: Response) => {
+  try {
+    const result = await getVolunteerQualifications(req.params.id);
+    res.status(200).json(result);
+  } catch (error) {
+    sendInternalError(res, error, 'Error getting volunteer qualifications');
+  }
+});
+
+// 仅查询当前有效资格
+router.get('/:id/qualifications/current', async (req: Request, res: Response) => {
+  try {
+    const result = await getVolunteerQualifications(req.params.id);
+    res.status(200).json({ success: true, data: result.data?.current || [] });
+  } catch (error) {
+    sendInternalError(res, error, 'Error getting current qualifications');
   }
 });
 

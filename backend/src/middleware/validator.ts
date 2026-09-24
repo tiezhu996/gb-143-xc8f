@@ -96,6 +96,35 @@ export const adjustCreditSchema = Joi.object({
   reason: Joi.string().min(5).required(),
 });
 
+export const issueQualificationSchema = Joi.object({
+  volunteer_id: Joi.string().uuid().required(),
+  service_type: Joi.string().valid(
+    'elderly_care', 'child_care', 'medical_assist', 'education',
+    'community_service', 'disaster_relief', 'environmental',
+    'cultural_activity', 'other'
+  ).required(),
+  valid_from: Joi.date().optional(),
+  valid_until: Joi.date().required().messages({ 'any.required': '缺少有效期到期日' }),
+  note: Joi.string().max(500).optional(),
+}).custom((value, helpers) => {
+  const from = value.valid_from ? new Date(value.valid_from) : new Date();
+  if (new Date(value.valid_until) < new Date(from.toDateString())) {
+    return helpers.error('date.greater', { label: 'valid_until' });
+  }
+  return value;
+}).messages({ 'date.greater': '有效期到期日不能早于起始日' });
+
+export const renewQualificationSchema = Joi.object({
+  valid_until: Joi.date().required().messages({ 'any.required': '缺少续期后的到期日' }),
+  note: Joi.string().max(500).optional(),
+});
+
+export const revokeQualificationSchema = Joi.object({
+  reason: Joi.string().min(2).max(500).required().messages({
+    'string.min': '撤销原因不能少于2个字符',
+  }),
+});
+
 export const paginationSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   page_size: Joi.number().integer().min(1).max(100).default(20),

@@ -5,6 +5,7 @@ import { createServiceRecord } from '../services/volunteerService';
 import { createVolunteer, getVolunteerById, getVolunteerSummary } from '../services/volunteerManager';
 import { createComplaint, handleComplaint } from '../services/complaintService';
 import { recalculateCreditScore, CREDIT_LIMIT_THRESHOLD } from '../services/creditService';
+import { issueQualification } from '../services/qualificationService';
 
 dotenv.config();
 
@@ -102,6 +103,14 @@ const runTests = async (): Promise<void> => {
     console.log('========================================');
 
     console.log('\n--- 用例2.1: 高评分服务增加信用分 ---');
+    // 医疗辅助属于资格管控类型，先登记有效资格
+    await issueQualification({
+      volunteerId: volunteerId,
+      serviceType: 'medical_assist',
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      adminId: 'test-admin',
+      note: '信用分测试用资格',
+    });
     const highRatingService = await createServiceRecord({
       volunteer_id: volunteerId,
       service_type: 'medical_assist',

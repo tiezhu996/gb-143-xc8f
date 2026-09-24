@@ -3,8 +3,17 @@ import pool from '../db/pool';
 import { calculatePoints, calculateNoShowPenalty } from './pointsCalculator';
 import { calculateLevel, checkNewBadges } from './badgeService';
 import { logCreditChange, isCreditLimited, CREDIT_LIMIT_THRESHOLD, recalculateCreditScore } from './creditService';
+import {
+  checkQualificationForRecord,
+  findQualificationViolations,
+  isQualificationRequired,
+  toDateString,
+} from './qualificationService';
 import { logger } from '../utils/logger';
 import { messages } from '../constants/messages';
+
+const getServiceDateString = (record: ServiceRecord): string =>
+  record.recorded_at ? toDateString(record.recorded_at) : new Date().toISOString().slice(0, 10);
 
 export const createServiceRecord = async (record: ServiceRecord): Promise<ApiResponse<CreateServiceRecordResult>> => {
   const client = await pool.connect();
@@ -37,6 +46,30 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
       };
     }
 
+    // 按服务日期核验本人当时的类型资格；不符合则拒绝，积分、次数、徽章、信用均不变
+    const serviceDate = getServiceDateString(record);
+    if (isQualificationRequired(record.service_type)) {
+      const qualificationCheck = await checkQualificationForRecord(
+        client,
+        record.volunteer_id,
+        record.service_type,
+        serviceDate
+      );
+      if (!qualificationCheck.valid) {
+        await client.query('ROLLBACK');
+        return {
+          success: false,
+          error: qualificationCheck.reason,
+          details: {
+            volunteer_id: record.volunteer_id,
+            volunteer_name: volunteer.name,
+            service_type: record.service_type,
+            service_date: serviceDate,
+          }
+        };
+      }
+    }
+
     const pointsEarned = record.is_no_show ? 0 : calculatePoints(
       record.duration_hours,
       record.service_type,
@@ -45,8 +78,8 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
 
     const insertResult = await client.query(
       `INSERT INTO service_records
-       (volunteer_id, service_type, duration_hours, rating, points_earned, is_no_show, location, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (volunteer_id, service_type, duration_hours, rating, points_earned, is_no_show, location, description, recorded_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamp)
        RETURNING *`,
       [
         record.volunteer_id,
@@ -57,6 +90,7 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
         record.is_no_show || false,
         record.location,
         record.description,
+        record.recorded_at ? serviceDate : new Date().toISOString(),
       ]
     );
 
@@ -145,6 +179,19 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
 export const batchCreateServiceRecords = async (
   records: ServiceRecord[]
 ): Promise<ApiResponse<any>> => {
+  // 先按服务日期逐人逐类型核验资格，任何一条不符合则整批拒绝
+  const violations = await findQualificationViolations(records);
+
+  if (violations.length > 0) {
+    return {
+      success: false,
+      error: messages.qualifications.batchRejected,
+      details: {
+        violations,
+      },
+    };
+  }
+
   const results: any[] = [];
   let successCount = 0;
   let failCount = 0;

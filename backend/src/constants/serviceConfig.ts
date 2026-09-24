@@ -1,13 +1,16 @@
+// 需要先核验资格才能排班的服务类型
+export const qualificationRequiredTypes = ['medical_assist', 'disaster_relief'];
+
 export const serviceTypes = [
-  { type: 'elderly_care', name: '老人陪护', weight: 1.5 },
-  { type: 'child_care', name: '儿童关爱', weight: 1.4 },
-  { type: 'medical_assist', name: '医疗辅助', weight: 1.6 },
-  { type: 'education', name: '教育辅导', weight: 1.3 },
-  { type: 'community_service', name: '社区服务', weight: 1.2 },
-  { type: 'disaster_relief', name: '救灾援助', weight: 2.0 },
-  { type: 'environmental', name: '环保行动', weight: 1.1 },
-  { type: 'cultural_activity', name: '文化活动', weight: 1.0 },
-  { type: 'other', name: '其他服务', weight: 1.0 },
+  { type: 'elderly_care', name: '老人陪护', weight: 1.5, requires_qualification: false },
+  { type: 'child_care', name: '儿童关爱', weight: 1.4, requires_qualification: false },
+  { type: 'medical_assist', name: '医疗辅助', weight: 1.6, requires_qualification: true },
+  { type: 'education', name: '教育辅导', weight: 1.3, requires_qualification: false },
+  { type: 'community_service', name: '社区服务', weight: 1.2, requires_qualification: false },
+  { type: 'disaster_relief', name: '救灾援助', weight: 2.0, requires_qualification: true },
+  { type: 'environmental', name: '环保行动', weight: 1.1, requires_qualification: false },
+  { type: 'cultural_activity', name: '文化活动', weight: 1.0, requires_qualification: false },
+  { type: 'other', name: '其他服务', weight: 1.0, requires_qualification: false },
 ];
 
 export const badgeLevels = [
@@ -41,4 +44,8 @@ export const apiEndpoints = [
   'POST /api/v1/complaints/:id/handle - 处理投诉',
   'POST /api/v1/admin/adjust-points - 调整积分',
   'POST /api/v1/admin/adjust-credit - 调整信用分',
+  'GET  /api/v1/volunteers/:id/qualifications - 志愿者资格（当前+历史）',
+  'POST /api/v1/admin/qualifications - 登记服务类型资格',
+  'POST /api/v1/admin/qualifications/:id/renew - 续期资格（旧资格留档）',
+  'POST /api/v1/admin/qualifications/:id/revoke - 撤销资格（立即失效）',
 ];

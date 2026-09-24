@@ -8,7 +8,7 @@ import adminRoutes from './routes/admin';
 import { authMiddleware } from './middleware/auth';
 import { env } from './config/env';
 import { messages } from './constants/messages';
-import { badgeLevels, serviceRules, serviceTypes } from './constants/serviceConfig';
+import { badgeLevels, serviceRules, serviceTypes, qualificationRequiredTypes } from './constants/serviceConfig';
 import { logger } from './utils/logger';
 
 const app = express();
@@ -43,6 +43,7 @@ app.get('/api/v1/service-types', (req: Request, res: Response) => {
       badgeLevels,
       pointsPerHour: serviceRules.pointsPerHour,
       creditLimitThreshold: serviceRules.creditLimitThreshold,
+      qualificationRequiredTypes,
     },
   });
 });

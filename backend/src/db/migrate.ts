@@ -135,6 +135,35 @@ const createTables = async (): Promise<void> => {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS volunteer_qualifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
+        service_type VARCHAR(50) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active', 'renewed', 'revoked', 'expired')),
+        valid_from DATE NOT NULL DEFAULT CURRENT_DATE,
+        valid_until DATE NOT NULL,
+        issued_by VARCHAR(100) NOT NULL,
+        issue_note TEXT,
+        renewed_from_id UUID REFERENCES volunteer_qualifications(id) ON DELETE SET NULL,
+        revoked_at TIMESTAMP,
+        revoked_by VARCHAR(100),
+        revoke_reason TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CHECK (valid_until >= valid_from)
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_volunteer_qualifications_active
+        ON volunteer_qualifications(volunteer_id, service_type)
+        WHERE status = 'active';
+      CREATE INDEX IF NOT EXISTS idx_volunteer_qualifications_volunteer_id
+        ON volunteer_qualifications(volunteer_id);
+      CREATE INDEX IF NOT EXISTS idx_volunteer_qualifications_service_type
+        ON volunteer_qualifications(service_type);
+    `);
+
+    await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
       BEGIN
@@ -151,6 +180,11 @@ const createTables = async (): Promise<void> => {
       DROP TRIGGER IF EXISTS update_service_records_updated_at ON service_records;
       CREATE TRIGGER update_service_records_updated_at
         BEFORE UPDATE ON service_records
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      DROP TRIGGER IF EXISTS update_volunteer_qualifications_updated_at ON volunteer_qualifications;
+      CREATE TRIGGER update_volunteer_qualifications_updated_at
+        BEFORE UPDATE ON volunteer_qualifications
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     `);
 

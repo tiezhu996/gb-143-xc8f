@@ -16,6 +16,9 @@ export const SERVICE_TYPE_WEIGHTS: ServiceTypeWeight[] = [
   { type: 'other', weight: 1.0, name: '其他服务' },
 ];
 
+// 必须持有有效资格才能排班的服务类型（医疗辅助、救灾援助）
+export const QUALIFICATION_REQUIRED_TYPES: string[] = ['medical_assist', 'disaster_relief'];
+
 export const POINTS_PER_HOUR = 10;
 
 export const LEVEL_THRESHOLDS: Record<number, number> = {
@@ -78,6 +81,33 @@ export interface Badge {
   badge_name: string;
   description: string;
   awarded_at: Date;
+}
+
+export type QualificationStatus = 'active' | 'renewed' | 'revoked' | 'expired';
+
+export interface Qualification {
+  id: string;
+  volunteer_id: string;
+  service_type: string;
+  status: QualificationStatus;
+  valid_from: Date | string;
+  valid_until: Date | string;
+  issued_by: string;
+  issue_note?: string;
+  renewed_from_id?: string;
+  revoked_at?: Date;
+  revoked_by?: string;
+  revoke_reason?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface QualificationViolation {
+  volunteer_id: string;
+  volunteer_name?: string;
+  service_type: string;
+  reason: string;
+  service_date?: string;
 }
 
 export interface Complaint {

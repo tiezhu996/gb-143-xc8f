@@ -25,7 +25,8 @@ router.post('/', validateRequest(serviceRecordSchema), async (req: Request, res:
 router.post('/batch', validateRequest(batchServiceRecordsSchema), async (req: Request, res: Response) => {
   try {
     const result = await batchCreateServiceRecords(req.body.records);
-    res.status(200).json(result);
+    const statusCode = result.success ? 200 : 400;
+    res.status(statusCode).json(result);
   } catch (error) {
     sendInternalError(res, error, 'Error batch creating service records');
   }

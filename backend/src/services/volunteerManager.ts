@@ -1,6 +1,7 @@
 import { Volunteer, ApiResponse, PaginatedData } from '../types';
 import pool from '../db/pool';
 import { messages } from '../constants/messages';
+import { getVolunteerQualifications } from './qualificationService';
 
 export const createVolunteer = async (
   name: string,
@@ -275,6 +276,8 @@ export const getVolunteerSummary = async (
       ['pending', volunteerId]
     );
 
+    const qualifications = await getVolunteerQualifications(volunteerId);
+
     return {
       success: true,
       data: {
@@ -286,6 +289,8 @@ export const getVolunteerSummary = async (
           avg_rating: parseFloat(statsResult.rows[0].avg_rating),
         },
         complaints: complaintsResult.rows[0],
+        qualifications: qualifications.data?.current || [],
+        qualification_history: qualifications.data?.history || [],
       },
     };
   } finally {

@@ -26,6 +26,27 @@ docker compose down -v --remove-orphans
 - 志愿者档案与服务记录
 - 积分、徽章和信用分计算
 - 投诉处理、后台调整和排行榜
+- 按服务类型生效的资格核验（医疗辅助、救灾援助等）
+
+## 服务资格核验
+
+医疗辅助（`medical_assist`）、救灾援助（`disaster_relief`）等需要专业资质的服务类型，必须先由管理员登记资格（含有效期）才能录入服务记录；文化活动、社区服务等普通类型照常录入。
+
+资格管理（需管理员令牌）：
+
+- `POST /api/v1/admin/qualifications/volunteers/:volunteerId/issue` — 登记资格（同一类型已有有效资格时拒绝，请走续期）
+- `POST /api/v1/admin/qualifications/volunteers/:volunteerId/renew` — 续期，旧资格标记为 `renewed` 留档
+- `POST /api/v1/admin/qualifications/:id/revoke` — 撤销，立即失效
+- `GET /api/v1/admin/qualifications/volunteers/:volunteerId` — 当前资格与历史留档
+- `POST /api/v1/admin/qualifications/check` — 排班预检，按服务日期核对资格，不落库
+
+录入核验规则：
+
+- 单条录入：按服务日期（`recorded_at`，缺省为当天）核对本人当时资格；不符返回 422 及人员、类型、原因，积分/次数/徽章/信用均不变。
+- 批量录入：先整批预检，任一记录资格不符则**整批拒绝**（422），响应中返回所有违规的人员与类型，不写入任何记录。
+
+志愿者侧可通过 `GET /api/v1/volunteers/:id/qualifications` 查询资格留档，`GET /api/v1/volunteers/:id/summary` 返回当前资格与有效期。
+
 
 ## 本地开发
 

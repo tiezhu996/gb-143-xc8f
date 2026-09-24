@@ -1,6 +1,7 @@
 import { Volunteer, ApiResponse, PaginatedData } from '../types';
 import pool from '../db/pool';
 import { messages } from '../constants/messages';
+import { getCurrentQualifications } from './qualificationService';
 
 export const createVolunteer = async (
   name: string,
@@ -275,11 +276,14 @@ export const getVolunteerSummary = async (
       ['pending', volunteerId]
     );
 
+    const qualifications = await getCurrentQualifications(client, volunteerId);
+
     return {
       success: true,
       data: {
         volunteer,
         badges: badgesResult.rows,
+        qualifications,
         statistics: {
           ...statsResult.rows[0],
           total_hours: parseFloat(statsResult.rows[0].total_hours),

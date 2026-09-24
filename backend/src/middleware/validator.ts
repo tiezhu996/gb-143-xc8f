@@ -96,6 +96,33 @@ export const adjustCreditSchema = Joi.object({
   reason: Joi.string().min(5).required(),
 });
 
+const serviceTypeRule = Joi.string().valid(
+  'elderly_care', 'child_care', 'medical_assist', 'education',
+  'community_service', 'disaster_relief', 'environmental',
+  'cultural_activity', 'other'
+);
+
+export const qualificationIssueSchema = Joi.object({
+  service_type: serviceTypeRule.required(),
+  valid_from: Joi.date().optional(),
+  valid_until: Joi.date().required(),
+  certificate_no: Joi.string().max(100).optional(),
+});
+
+export const qualificationRenewSchema = qualificationIssueSchema;
+
+export const qualificationRevokeSchema = Joi.object({
+  reason: Joi.string().min(2).required(),
+});
+
+export const eligibilityCheckSchema = Joi.object({
+  items: Joi.array().items(Joi.object({
+    volunteer_id: Joi.string().uuid().required(),
+    service_type: serviceTypeRule.required(),
+    service_date: Joi.date().required(),
+  })).min(1).required(),
+});
+
 export const paginationSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   page_size: Joi.number().integer().min(1).max(100).default(20),

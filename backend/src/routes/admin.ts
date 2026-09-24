@@ -6,6 +6,7 @@ import {
   getAdminAuditLogs,
   setVolunteerStatus,
 } from '../services/adminService';
+import qualificationRoutes from './qualifications';
 import { AuthRequest, requireAdmin } from '../middleware/auth';
 import { messages } from '../constants/messages';
 import { sendBadRequest, sendInternalError } from '../utils/httpResponses';
@@ -13,6 +14,8 @@ import { sendBadRequest, sendInternalError } from '../utils/httpResponses';
 const router = Router();
 
 router.use(requireAdmin);
+
+router.use('/qualifications', qualificationRoutes);
 
 router.post('/adjust-points', validateRequest(adjustPointsSchema), async (req: AuthRequest, res: Response) => {
   try {

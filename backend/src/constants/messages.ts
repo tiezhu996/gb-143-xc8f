@@ -43,6 +43,26 @@ export const messages = {
     serviceRecordDeleted: '记录已删除',
     serviceRecordDeleteFailed: '删除记录失败',
   },
+  qualifications: {
+    notFound: '资格记录不存在',
+    typeNotRequired: '该服务类型不需要资格核验，可直接录入服务',
+    invalidType: '不支持的服务类型',
+    invalidDateRange: '有效期起止日期不合法（有效期止必须晚于或等于有效期起）',
+    activeExists: '该志愿者此服务类型已有一份有效资格，如需更新请使用续期',
+    noActiveToRenew: '该志愿者此服务类型当前没有可续期的有效资格',
+    noActiveToRevoke: '该资格已不可撤销（非有效状态）',
+    revoked: '资格已撤销并立即失效',
+    issued: '资格登记成功',
+    renewed: '资格续期成功，旧资格已留档',
+    missing: (serviceType: string) => `缺少服务类型「${serviceType}」的有效资格`,
+    notEffective: (serviceType: string, validFrom: string) =>
+      `服务类型「${serviceType}」的资格自 ${validFrom} 起生效，服务日期早于生效日`,
+    expired: (serviceType: string, validUntil: string) =>
+      `服务类型「${serviceType}」的资格已于 ${validUntil} 到期`,
+    revokedAtServiceDate: (serviceType: string) =>
+      `服务类型「${serviceType}」的资格在服务日期时已被撤销`,
+    batchRejected: '批量录入被整批拒绝：存在志愿者在服务日期不具备有效资格，积分、次数、徽章、信用均未变更',
+  },
   complaints: {
     notFound: '投诉不存在',
     alreadyHandled: '该投诉已处理',

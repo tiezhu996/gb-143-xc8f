@@ -1,8 +1,9 @@
-import { Volunteer, ServiceRecord, PointsLog, ApiResponse, CreateServiceRecordResult } from '../types';
+import { Volunteer, ServiceRecord, ApiResponse, CreateServiceRecordResult, QualificationViolation } from '../types';
 import pool from '../db/pool';
 import { calculatePoints, calculateNoShowPenalty } from './pointsCalculator';
 import { calculateLevel, checkNewBadges } from './badgeService';
 import { logCreditChange, isCreditLimited, CREDIT_LIMIT_THRESHOLD, recalculateCreditScore } from './creditService';
+import { verifyServiceQualification, preflightBatchRecords, recordServiceDate, getServiceTypeName } from './qualificationService';
 import { logger } from '../utils/logger';
 import { messages } from '../constants/messages';
 
@@ -23,6 +24,32 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
     }
 
     const volunteer = volunteerResult.rows[0] as Volunteer;
+
+    // 按服务日期核验该服务类型的资格（普通类型自动放行）
+    const serviceDate = recordServiceDate(record);
+    const qualificationCheck = await verifyServiceQualification(
+      client,
+      record.volunteer_id,
+      record.service_type,
+      serviceDate
+    );
+    if (!qualificationCheck.ok) {
+      await client.query('ROLLBACK');
+      return {
+        success: false,
+        error: qualificationCheck.violation.reason,
+        details: {
+          qualification_required: true,
+          violations: [
+            {
+              ...qualificationCheck.violation,
+              volunteer_name: volunteer.name,
+              service_type_name: getServiceTypeName(record.service_type),
+            },
+          ],
+        },
+      };
+    }
 
     if (isCreditLimited(volunteer.credit_score)) {
       await client.query('ROLLBACK');
@@ -45,8 +72,8 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
 
     const insertResult = await client.query(
       `INSERT INTO service_records
-       (volunteer_id, service_type, duration_hours, rating, points_earned, is_no_show, location, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (volunteer_id, service_type, duration_hours, rating, points_earned, is_no_show, location, description, recorded_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         record.volunteer_id,
@@ -57,6 +84,7 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
         record.is_no_show || false,
         record.location,
         record.description,
+        serviceDate,
       ]
     );
 
@@ -145,6 +173,39 @@ export const createServiceRecord = async (record: ServiceRecord): Promise<ApiRes
 export const batchCreateServiceRecords = async (
   records: ServiceRecord[]
 ): Promise<ApiResponse<any>> => {
+  // 第一步：统一预检（志愿者存在 + 按服务日期核验资格），任一不符则整批拒绝
+  const preflightClient = await pool.connect();
+  let violations: QualificationViolation[] = [];
+  try {
+    await preflightClient.query('BEGIN');
+    violations = await preflightBatchRecords(preflightClient, records);
+    await preflightClient.query('ROLLBACK');
+  } catch (error) {
+    await preflightClient.query('ROLLBACK');
+    logger.error(messages.logs.createServiceRecordFailed, error);
+    return { success: false, error: messages.volunteers.serviceRecordCreateFailed };
+  } finally {
+    preflightClient.release();
+  }
+
+  if (violations.length > 0) {
+    return {
+      success: false,
+      error: messages.qualifications.batchRejected,
+      details: {
+        rejected: true,
+        total: records.length,
+        violation_count: violations.length,
+        // 返回人员与类型，供排班/管理员定位
+        violations: violations.map(v => ({
+          ...v,
+          service_type_name: getServiceTypeName(v.service_type),
+        })),
+      },
+    };
+  }
+
+  // 第二步：全部通过后逐条录入；预检之后出现的信用限制等按原有逐条结果返回
   const results: any[] = [];
   let successCount = 0;
   let failCount = 0;
@@ -161,7 +222,7 @@ export const batchCreateServiceRecords = async (
   }
 
   return {
-    success: true,
+    success: failCount === 0,
     data: {
       total: records.length,
       successCount,

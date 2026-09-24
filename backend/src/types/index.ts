@@ -2,18 +2,19 @@ export interface ServiceTypeWeight {
   type: string;
   weight: number;
   name: string;
+  requires_qualification?: boolean;
 }
 
 export const SERVICE_TYPE_WEIGHTS: ServiceTypeWeight[] = [
-  { type: 'elderly_care', weight: 1.5, name: '老人陪护' },
-  { type: 'child_care', weight: 1.4, name: '儿童关爱' },
-  { type: 'medical_assist', weight: 1.6, name: '医疗辅助' },
-  { type: 'education', weight: 1.3, name: '教育辅导' },
-  { type: 'community_service', weight: 1.2, name: '社区服务' },
-  { type: 'disaster_relief', weight: 2.0, name: '救灾援助' },
-  { type: 'environmental', weight: 1.1, name: '环保行动' },
-  { type: 'cultural_activity', weight: 1.0, name: '文化活动' },
-  { type: 'other', weight: 1.0, name: '其他服务' },
+  { type: 'elderly_care', weight: 1.5, name: '老人陪护', requires_qualification: false },
+  { type: 'child_care', weight: 1.4, name: '儿童关爱', requires_qualification: false },
+  { type: 'medical_assist', weight: 1.6, name: '医疗辅助', requires_qualification: true },
+  { type: 'education', weight: 1.3, name: '教育辅导', requires_qualification: false },
+  { type: 'community_service', weight: 1.2, name: '社区服务', requires_qualification: false },
+  { type: 'disaster_relief', weight: 2.0, name: '救灾援助', requires_qualification: true },
+  { type: 'environmental', weight: 1.1, name: '环保行动', requires_qualification: false },
+  { type: 'cultural_activity', weight: 1.0, name: '文化活动', requires_qualification: false },
+  { type: 'other', weight: 1.0, name: '其他服务', requires_qualification: false },
 ];
 
 export const POINTS_PER_HOUR = 10;
@@ -69,6 +70,33 @@ export interface Volunteer {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+}
+
+export type QualificationStatus = 'active' | 'renewed' | 'revoked' | 'expired';
+
+export interface Qualification {
+  id: string;
+  volunteer_id: string;
+  service_type: string;
+  status: QualificationStatus;
+  valid_from: Date;
+  valid_until: Date;
+  certificate_no?: string;
+  issued_by: string;
+  renewed_from?: string;
+  revoked_by?: string;
+  revoked_at?: Date;
+  revoke_reason?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface QualificationViolation {
+  volunteer_id: string;
+  volunteer_name?: string;
+  service_type: string;
+  service_date: string;
+  reason: string;
 }
 
 export interface Badge {

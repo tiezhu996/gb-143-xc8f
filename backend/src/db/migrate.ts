@@ -135,6 +135,38 @@ const createTables = async (): Promise<void> => {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS volunteer_qualifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
+        service_type VARCHAR(50) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active', 'renewed', 'revoked', 'expired')),
+        valid_from TIMESTAMP NOT NULL DEFAULT CURRENT_DATE,
+        valid_until TIMESTAMP NOT NULL,
+        certificate_no VARCHAR(100),
+        issued_by VARCHAR(100) NOT NULL,
+        renewed_from UUID REFERENCES volunteer_qualifications(id),
+        revoked_by VARCHAR(100),
+        revoked_at TIMESTAMP,
+        revoke_reason TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_volunteer_qualifications_volunteer_id
+        ON volunteer_qualifications(volunteer_id);
+      CREATE INDEX IF NOT EXISTS idx_volunteer_qualifications_service_type
+        ON volunteer_qualifications(volunteer_id, service_type);
+      CREATE INDEX IF NOT EXISTS idx_volunteer_qualifications_valid_until
+        ON volunteer_qualifications(valid_until);
+
+      -- 同一志愿者同一服务类型只保留一份有效资格（含尚未到期与已到期但未归档的 active 记录）
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_active_qualification_per_type
+        ON volunteer_qualifications(volunteer_id, service_type)
+        WHERE status = 'active';
+    `);
+
+    await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
       BEGIN
@@ -151,6 +183,11 @@ const createTables = async (): Promise<void> => {
       DROP TRIGGER IF EXISTS update_service_records_updated_at ON service_records;
       CREATE TRIGGER update_service_records_updated_at
         BEFORE UPDATE ON service_records
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      DROP TRIGGER IF EXISTS update_volunteer_qualifications_updated_at ON volunteer_qualifications;
+      CREATE TRIGGER update_volunteer_qualifications_updated_at
+        BEFORE UPDATE ON volunteer_qualifications
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     `);
 
